@@ -1,0 +1,679 @@
+---
+title: "Midterm Project"
+author: "Yicheng Shao"
+date: "2024-04-11"
+output: html_document
+---
+
+## 音乐潮流的可视化分析
+
+**引言**:
+
+在漫长的社会发展历史当中, 音乐是人类精神生活发展的产物, 一定程度上反映了时代特征与社会现实生活. 
+
+本次可视化项目中, 我们将提取音频特征数据集($\rm \text{audio_features.csv}$, 音乐排行榜数据集($\rm billboard.csv$)当中有效信息, 帮助读者们盘点热门经典歌曲, 分析造就歌曲火热的因素, 体验不一样的音乐风格的同时, 帮助我们更好地作出音乐创作的决策.
+
+## 目录
+
+1. 关注点一: 可视化登顶榜首前$\bf 10$多周次的歌曲榜单与周位排次变化
+
+2. 关注点二: 高人气度歌曲榜单的歌曲时长分布
+
+3. 关注点三: 基于$\rm Mode$分类的$\rm Popularity$影响因子分析(以$\rm Energy, \,Speechiness$为例)
+
+4. 关注点四: 探究影响因子之间的协同作用(以$\rm Energy, \, Speechiness$为例)
+
+5. 关注点五: 探究定性因子对于歌曲热度的分布影响(以$\rm Spotify \, Track \, Explicit$为例)
+
+6. 关注点六: 主流音乐风格的分布比例
+
+## 项目逻辑
+
+$\quad$在本项目中, 我们立足于一个数据分析师的视角, 为高热度榜单的热度排行, 热度成因, 因子内部作用, 音乐风格分析等层面, 予以数据可视化, 分析音乐火热的原因. 以此, 能够帮助音乐创作者们, 迎合听众大众的普遍观感, 创作出更加喜闻乐见的音乐作品.
+
+$\quad$首先, 我们发挥榜单固有的排名竞争作用, 对长期霸榜的金曲神曲予以呈现, 并以榜一神曲为例, 分析其在历次排位变化中的名次变动.
+
+$\quad$然后, 我们需要理性分析, 什么造就了这些脍炙人口的歌曲传遍千家万户呢? 单因素分析, 多因素分析, 以及因子内部协同作用分析, 我们一一进行举例分析.
+
+$\quad$最后, 为了打造好我们后续可能要创作的歌曲, 在具备以上因子特征的基础之上, 还需要我们进行风格的选择, 这个时候, 霸榜的音乐风格比例可以作为我们参考的一个重要标准. 究竟是跟随大潮流还是另辟蹊径呢? 对于音乐创作者们来说, 仁者见仁, 智者见智. 总之, 希望通过可视化分析, 帮助看到本项目的读者们更好更全面的了解音乐对于人们喜好把握的基本原理与基本要素.
+
+## 数据准备: 数据集与变量介绍
+
+**音乐排行榜数据集(billboard.csv)**:
+
+1. "url" - 网址
+
+2. "week_id" - 周ID
+
+3. "week_position" - 周排名
+
+4. "song" - 歌曲名称
+
+5. "performer" - 表演者
+
+6. "song_id" - 歌曲ID
+
+7. "instance" - 实例（可能是指版本或不同的发行）
+
+8. "previous_week_position" - 上周排名
+
+9. "peak_position" - 最高排名
+
+10. "weeks_on_chart" - 排行榜上的周数
+
+**音频特征数据集(audio_features.csv)**:
+
+1. "song_id" - 歌曲ID
+
+2. "performer" - 表演者
+
+3. "song" - 歌曲名称
+
+4. "spotify_genre" - Spotify音乐类型
+
+5. "spotify_track_id" - Spotify曲目ID
+
+6. "spotify_track_preview_url" - Spotify曲目预览链接
+
+7. "spotify_track_duration_ms" - Spotify曲目时长（毫秒）
+
+8. "spotify_track_explicit" - 曲目是否包含成人内容
+
+9. "spotify_track_album" - Spotify专辑名称
+
+10. "danceability" - 舞曲性
+
+11. "energy" - 能量
+
+12. "key" - 调式
+
+13. "loudness" - 响度
+
+14. "mode" - 音阶模式（大调或小调）
+
+15. "speechiness" - 语言性
+
+16. "acousticness" - Acoustic性
+
+17. "instrumentalness" - 乐器性
+
+18. "liveness" - 现场性
+
+19. "valence" - 情感积极性
+
+20. "tempo" - 节奏
+
+21. "time_signature" - 时间签名
+
+22. "spotify_track_popularity" - Spotify曲目人气指数
+这些列名描述了两个不同的数据集，一个关注歌曲在音乐排行榜上的表现，另一个关注歌曲的音频特征。
+
+## 本次数据可视化项目的色彩方案 
+
+<font color="#CC0000">红色</font><br />作为本次作图的主基调色彩;
+
+<font color="#377EB8">蓝色</font><br />作为作图的数据区分类颜色, 表示数据点依照某一个分类变量而呈现不同的组别差异; 
+
+<font color="darkseagreen4">绿色</font><br />作为作图的辅助色, 用以描绘数据大致分布的辅助信息. 
+
+## 导入数据
+```{r}
+rm(list = ls())
+library(tidyverse)
+
+## 导入数据
+data_a <- read.csv(file = "audio_features.csv")
+data_b <- read.csv(file = "billboard.csv")
+```
+
+## 关注点一: 可视化登顶榜首前$\bf 10$多周次的歌曲榜单与周位排次变化
+
+$\quad$本部分当中, 依据榜单自有的排名竞争特色, 对于榜首金曲进行可视化呈现, 并予以同期其他金曲之间的排位比对.
+```{r, fig.height=10, fig.width=12}
+library(ggrepel)
+
+my_theme <- function(){
+  theme_linedraw(base_size = 12) +
+    theme(
+      plot.background = element_rect(fill = NA, color = NA),
+      plot.title = element_text(size = 18, hjust = 0.5, vjust = 0.5, color = "black", face = "bold", margin = margin(b = 0.2, unit = "cm")),
+      plot.subtitle = element_text(size = 12, hjust = 0, vjust = 0.5, margin = margin(b = 0.2, unit = "cm")),
+      plot.caption = element_text(size = 10, hjust = 1, face = "italic", margin = margin(t = 0.1, unit = "cm"), colour = "#CC0000"),
+      axis.ticks = element_blank(),
+      axis.text.x = element_text(size = 12, colour = "grey30"),  
+      axis.text.y = element_text(size = 12, colour = "grey30"),
+      legend.background = element_rect(fill = NA, color = NA),
+      legend.key = element_rect(fill = NA, color = NA),
+      legend.title = element_text(size = 12, hjust = 0.5, face = "bold"),
+      panel.grid.major.x = element_line(colour = "grey45", linetype = "dashed", size = 0.2),
+      panel.grid.major.y = element_line(colour = "grey45", linetype = "dashed", size = 0.2),
+      panel.background = element_rect(fill = "white"),
+      panel.grid.major = element_line(color = "grey90", size = 0.3),
+      panel.grid.minor = element_blank(),
+      strip.background = element_rect(fill = "#CC0000"),
+      strip.text.x = element_text(size = 10, color = "black", face = "bold")
+    )
+}
+
+p1 = data_b %>%
+  group_by(song_id) %>%
+  summarise(weeks_on_chart = max(weeks_on_chart), .groups = "drop") %>%
+  arrange(desc(weeks_on_chart)) %>%
+  top_n(10) %>%
+  mutate(song_id = str_replace(song_id, "Party Rock AnthemLMFAO Featuring Lauren Bennett & GoonRock", "Party Rock AnthemLMFAO Featuring \n Lauren Bennett & GoonRock")) %>%
+  mutate(song_id = str_replace(song_id, "Foolish Games/You Were Meant For MeJewel", "Foolish Games/You Were \n Meant For MeJewel")) %>%
+  ggplot(aes(x = reorder(song_id, weeks_on_chart), y = weeks_on_chart)) +
+  geom_bar(stat = "identity", position = "dodge", fill = "#CC0000", width = 0.5) +
+  geom_text(aes(label = weeks_on_chart), hjust = -0.5, col = "#CC0000") +
+  labs(fill = "Year", x = "", y = "Weeks on Chart",
+title = "Songs of Top 10 on Chart", caption = "Billboard Top 100 data from #Tidytuesday") +
+  coord_flip() +
+  my_theme()
+
+my_theme_null <- function(){
+  theme_linedraw(base_size = 12) +
+    theme(
+      plot.background = element_rect(fill = NA, color = NA),
+      plot.title = element_text(size = 18, hjust = 0.5, vjust = 0.5, color = "black", face = "bold", margin = margin(b = 0.2, unit = "cm")),
+      plot.subtitle = element_text(size = 12, hjust = 0, vjust = 0.5, margin = margin(b = 0.2, unit = "cm")),
+      plot.caption = element_text(size = 10, hjust = 1, face = "italic", margin = margin(t = 0.1, unit = "cm"), colour = "#CC0000"),
+      axis.ticks = element_blank(),
+      axis.text.x = element_text(size = 12, colour = "grey30"),  
+      axis.text.y = element_text(size = 12, colour = "grey30"),
+      legend.background = element_rect(fill = NA, color = NA),
+      legend.position = "none", 
+      legend.key = element_rect(fill = NA, color = NA),
+      legend.title = element_text(size = 12, hjust = 0.5, face = "bold"),
+      panel.grid.major.x = element_line(colour = "grey45", linetype = "dashed", size = 0.2),
+      panel.grid.major.y = element_line(colour = "grey45", linetype = "dashed", size = 0.2),
+      panel.background = element_rect(fill = "white"),
+      panel.grid.major = element_line(color = "grey90", size = 0.3),
+      panel.grid.minor = element_blank(),
+      strip.background = element_rect(fill = "#CC0000"),
+      strip.text.x = element_text(size = 10, color = "black", face = "bold")
+    )
+}
+
+library(lubridate)
+
+top_name = data_b %>%
+  group_by(song_id) %>%
+  summarise(weeks_on_chart = max(weeks_on_chart), .groups = "drop") %>%
+  arrange(desc(weeks_on_chart)) %>%
+  top_n(10)
+
+p2 = data_b %>%
+  #filter(song_id %in% c("RadioactiveImagine Dragons",, "SailAWOLNATION", "I'm YoursJason Mraz")) %>%
+  filter(song_id %in% top_name$song_id) %>%
+  mutate(year = as.numeric(str_sub(week_id, -4, -1))) %>%
+  filter(year %in% c(2010, 2011, 2012, 2013, 2014, 2015, 2016)) %>%
+  mutate(top1 = ifelse(song_id == "RadioactiveImagine Dragons", "RadioactiveImagine Dragons", "Other"),
+         labelname = ifelse(top1 == "RadioactiveImagine Dragons" & weeks_on_chart == 87, top1, NA_character_)) %>%
+  ggplot(aes(x = dmy(week_id), y = 101-week_position, group = song_id, color = top1)) +
+  geom_line(lwd = 1) +
+  geom_label_repel(aes(label = labelname), size = 3) +
+  scale_color_manual(values = c("lightgrey", "#CC0000")) +
+  scale_size_manual(values = c(1.5, 0.75)) +
+  scale_alpha_manual(values = c(0.3, 1)) +
+  labs(title = "Annual Change in Week Positions of Top Songs", x = "Time", y = "Week Position Score") +
+  my_theme_null()
+  
+library(ggpubr)
+
+ggarrange(p1, p2,  nrow = 2, ncol = 1) %>%
+  annotate_figure(
+    top = text_grob("", color = "black", face = "bold", size = 20, hjust = 0.5, vjust = 1),
+    bottom = text_grob("Billboard Top 100 data from #Tidytuesday", hjust = 1, x = 1, face = "italic", size = 10, vjust = -0.5, color = "#CC0000"))
+
+ggsave(
+  filename = "关注点1.png", 
+  width = 10,             # 宽
+  height = 12,            # 高
+  units = "in",          # 单位
+  dpi = 300              # 分辨率DPI
+)
+
+```
+
+**评论:**
+
+1. 组合图图一(上方图)中, 对于Top 10在榜时长的歌曲进行了柱状图可视化. 这里, 特殊的处理在于: 对于Top 1时间长在榜的歌曲$\rm Radioactive\, Imagine \, Dragons$, 进行了同期排名的可视化;
+
+2. 组合图图二(下方图)中, 首先需要对的$y$轴变量$\rm Week \, Position \, Score$进行一个补充说明. 为了呈现排名, 我们直观上喜欢把排名靠前的数据点放在上方, 呈现"高排名"的理念. 但是, 排名越高, 数值越小, 与基本的绘图数值逻辑相悖. 为了更好地统一这一逻辑, 我们引入周次排名得分($\rm Week \, Position \, Score$)这一概念, 能够直观地表达, 该得分越高, 选手在整个周名次更加靠前一些. 
+
+3. 我们在图中不难发现, 歌曲$\rm Radioactive\, Imagine \, Dragons$自发布起, 于2013~2015年之间长期处于高位排名状态.
+
+## 关注点二: 高人气度歌曲榜单的歌曲时长分布
+
+$\quad$ 从本部分开始, 我们将探索造就高人气度歌曲的原因, 本节中将从时长分布的单因素分析角度, 去分析怎样的时长分布能够更好地适应听众.
+```{r}
+data_a %>%
+  filter(spotify_track_popularity > 30) %>%
+  filter(!is.na(spotify_track_duration_ms)) %>%
+  ggplot(aes(x = spotify_track_duration_ms/10^4, y = ..density..)) +
+  geom_histogram(fill = "#CC0000", color = "white") +
+  geom_density(color = "#CC0000", linewidth = 1) +
+  labs(title = "Duration Distribution of Songs with High Popularity", 
+       x = expression(paste("Duration(", 1%*%10^4, " ms)")), 
+       y = "Density",
+       caption = "Billboard Top 100 data from #Tidytuesday")+
+  xlim(0,60) +
+  my_theme()
+
+ggsave(
+  filename = "关注点2.png", 
+  width = 10,             # 宽
+  height = 8,            # 高
+  units = "in",          # 单位
+  dpi = 300              # 分辨率DPI
+)
+```
+
+**评论:**
+
+1. 数据分布图基本观察: 时长分布总体呈现左偏趋势, 峰值在$20 \sim 25$万毫秒处取到;
+
+2. 上述图示表明: 总体受欢迎曲目应当时长适中, 建议取值在峰值时长处. 同时, 左偏分布意味着, 较长时间的歌曲可能并不会收到听众们的青睐. 在实际歌曲创作过程中, 应当提升词曲内容的精炼度.
+
+## 关注点三: 基于$\rm Mode$分类的$\rm Popularity$影响因子分析(以$\rm Energy, \,Speechiness$为例)
+
+$\quad$ 本节中, 将基于单因素分析, 额外进行多因素分析的进一步探索. 其中, 我们融入了分类变量$\rm Mode$, 并融入其余协变量, 对整体分布特征进行刻画, 进而分析$\rm Popularity$的影响机制.
+
+```{r, fig.height=8}
+library(ggrepel)
+library(ggsci)
+library(ggtext)
+
+p3 = data_a %>%
+  filter(!is.na(spotify_track_popularity) & !is.na(energy)) %>%
+  filter(row_number() <= 260) %>%
+  ggplot(aes(x = energy, y = spotify_track_popularity)) +
+  geom_point(shape = 19, size = 1.5, alpha = 0.7, color = "#CC0000") +
+  geom_smooth(method = "lm", se = FALSE, aes(fill = "OLS", color = "OLS")) +
+  geom_smooth(method = "gam", se = FALSE, aes(fill = "GAM", color = "GAM")) +
+  labs(title = "Relationship Between Popularity and Energy",
+caption = "Billboard Top 100 data from #Tidytuesday", x = "Energy", y = "Popularity") +
+  scale_fill_manual(values = c("darkseagreen3", "#377EB8"), name = "Regression Method") +
+  scale_color_manual(values = c("darkseagreen3", "#377EB8"), name = "Regression Method") +
+  my_theme() +
+  theme(legend.position = "top",
+    plot.title = element_markdown(),
+    panel.background = element_blank(),
+    panel.grid.major = element_line(color = "grey90", size = 0.2),
+    axis.ticks = element_line(color = "grey90", size = 0.2),
+    legend.key = element_blank())
+
+p4 = data_a %>%
+  filter(!is.na(spotify_track_popularity) & !is.na(speechiness)) %>%
+  filter(row_number() <= 260) %>%
+  ggplot(aes(x = speechiness, y = spotify_track_popularity)) +
+  geom_point(shape = 19, size = 1.5, alpha = 0.7, color = "#CC0000") +
+  geom_smooth(method = "lm", se = FALSE, aes(fill = "OLS", color = "OLS")) +
+  geom_smooth(method = "gam", se = FALSE, aes(fill = "GAM", color = "GAM")) +
+  labs(title = "Relationship Between Popularity and Speechiness",
+caption = "Billboard Top 100 data from #Tidytuesday", x = "Speechiness", y = "Popularity") +
+  scale_fill_manual(values = c("darkseagreen3", "#377EB8"), name = "Regression Method") +
+  scale_color_manual(values = c("darkseagreen3", "#377EB8"), name = "Regression Method") +
+  my_theme() +
+  theme(legend.position = "top",
+    plot.title = element_markdown(),
+    panel.background = element_blank(),
+    panel.grid.major = element_line(color = "grey90", size = 0.2),
+    axis.ticks = element_line(color = "grey90", size = 0.2),
+    legend.key = element_blank())
+
+library(ggpubr)
+
+ggarrange(p3, p4,  nrow = 2, ncol = 1) %>%
+  annotate_figure(
+    top = text_grob("", color = "black", face = "bold", size = 20, hjust = 0.5, vjust = 1),
+    bottom = text_grob("", hjust = 1, x = 1, face = "italic", size = 10, vjust = -0.5, color = "#CC0000"))
+
+ggsave(
+  filename = "关注点3-1.png", 
+  width = 10,             # 宽
+  height = 8,            # 高
+  units = "in",          # 单位
+  dpi = 300              # 分辨率DPI
+)
+```
+
+**评论:**
+
+1. 预先声明: 由于散点图在数据样本点过多的情况下, 并不能有效传达数据分布与变量关系的信息. 所以, 本部分对于数据有一定的筛选机制, 并予以呈现;
+
+2. (单因素分析$\rm Popularity \sim Energy$) 散点图分布均匀, 没有呈现出明显的趋向特征. 此时, 回归直线的参考价值并不大;
+
+3. (单因素分析$\rm Popularity \sim Speechiness$) 散点图由于$\rm Speechiness$的取值集聚在较低的水平, 数据点产生了相应的集聚效应. 但是对于高$\rm Speechiness$的部分, 不难发现有较为明显的$\rm Popularity$上升趋势, 二者具备一定的线性相关性.
+
+```{r}
+library(ggrepel)
+library(ggsci)
+library(ggtext)
+
+data_a %>%
+  filter(!is.na(spotify_track_popularity) & !is.na(energy)) %>%
+  filter(row_number() <= 260) %>%
+  # mutate(popularity = case_when(
+  #  spotify_track_popularity > 80 ~ "80-100",
+  #  spotify_track_popularity > 60 ~ "60-80",
+  #  spotify_track_popularity > 40 ~ "40-60",
+  #  spotify_track_popularity > 20 ~ "20-40",
+  #  TRUE ~ "0-20"
+  # )) %>%
+  mutate(Mode = ifelse(mode == 0, "0", "1")) %>%
+  mutate(label = case_when(
+    Mode == "0" & energy > 0.965 ~ "Mode 0",
+    Mode == "1" & energy > 0.95 ~ "Mode 1")) %>%
+  # group_by(popularity, energy) %>%
+  ggplot(aes(x = energy, y = spotify_track_popularity, size = speechiness, color = Mode)) +
+  geom_point(shape = 16, alpha = 0.7) +
+  scale_size(range = c(0.1, 7), breaks = c(0.05, 0.1, 0.15, 0.2, 0.25),
+name = "Speechiness") +
+  geom_label_repel(aes(x = energy, y = spotify_track_popularity, color = Mode, label = label),
+inherit.aes = FALSE) +
+  scale_color_brewer(palette = "Set1", guide = "none") +
+  # geom_smooth(method = "lm", aes(color = "OLS", fill = "OLS")) +
+  # geom_smooth(method = "gam", aes(color = "GAM", fill = "GAM")) +
+  labs(title = "Contrast Between <span style = 'color:#CC0000;'>**Mode 0**</span> and <span style = 'color:#377EB8;'>**Mode 1**</span>",
+caption = "Billboard Top 100 data from #Tidytuesday", x = "Energy", y = "Popularity") + ## Alternative: #E41A1C
+  my_theme() +
+  theme(legend.position = "top",
+    plot.title = element_markdown(),
+    panel.background = element_blank(),
+    panel.grid.major = element_line(color = "grey90", size = 0.2),
+    axis.ticks = element_line(color = "grey90", size = 0.2),
+    legend.key = element_blank())
+
+# library(RColorBrewer)
+# palette <- brewer.pal(2, "Set1")
+
+# 打印颜色代码
+# print(palette)
+ggsave(
+  filename = "关注点3-2.png", 
+  #width = 10,             # 宽
+  #height = 8,            # 高
+  units = "in",          # 单位
+  dpi = 300              # 分辨率DPI
+)
+```
+
+**评论:**(多因素分析$\rm Popularity \sim Energy, Speechiness. Category = Mode$)
+
+1. (分类特征) 基于$\rm Mode$分类:
+
+   (i) 在$\rm Popularity, Energy$上分布总体均匀, 可以认为具备一致性, 不受分类因素影响; 
+   
+   (ii) 在$\rm Speechiness$上, $\rm Mode \, 0$的数值取值普遍较大, 具有取值的倾向性;
+
+2. (总体特征) 在高$\rm Popularity$数据点(以$\rm Popularity>50$为例)中:
+   
+   (i) 横向分布($\rm Energy$)中, 呈现出高$\rm Energy$的偏态分布;
+   
+   (ii) 气泡分布$\rm Speechiness$中, 呈现出大气泡密集现象, 说明具备高$\rm Speechiness$特征.
+   
+3. (大致结论) 从以上结论中, 不难判断出, 词曲力量度与语言性是造就金曲的一个重要因素. 强而有力的曲风曲调, 丰富多彩的言语传达都会一定程度上振奋听众的各项听感.
+
+## 关注点四: 探究影响因子之间的协同作用(以$\rm Energy, \, Speechiness$为例)
+
+$quad$ 本节中, 将接续上一节中的探讨. 我们将围绕上一节引入的因子, 去探究因子和因子之间是否存在协同作用(如: 多重共线性等), 以确认因子之间的重合程度是否较高. 根据可视化分析结果, 适当地对所建立的模型进行调整.
+```{r, fig.width=8}
+library(ggExtra)
+library(ggrepel)
+library(ggsci)
+library(ggtext)
+
+p = data_a %>%
+  filter(!is.na(spotify_track_popularity) & !is.na(energy) & !is.na(mode)) %>%
+  filter(row_number() <= 260) %>%
+  mutate(Mode = ifelse(mode == 0, "0", "1")) %>%
+  mutate(label = case_when(
+    Mode == "0" & energy > 0.965 ~ "Mode 0",
+    Mode == "1" & energy > 0.95 ~ "Mode 1")) %>%
+  ggplot(aes(x = energy, y = speechiness, color = Mode)) +
+  geom_rect(aes(xmin = 0.15, xmax = 1,
+ymin = 0.02, ymax = 0.095), alpha = 0.5, fill = "lightyellow", color = NA) +
+  geom_point(shape = 16, alpha = 0.7) +
+  geom_rug(color = "darkseagreen3", alpha = 0.5)+
+  geom_label_repel(aes(x = energy, y = speechiness, color = Mode, label = label),
+inherit.aes = FALSE) +
+  scale_color_brewer(palette = "Set1", guide = "none") +
+  #geom_smooth(method = "lm", aes(color = "OLS", fill = "OLS")) +
+  #geom_smooth(method = "gam", aes(color = "GAM", fill = "GAM")) +
+  labs(title = "Factors' Contrast Between <span style = 'color:#CC0000;'>**Mode 0**</span> and <span style = 'color:#377EB8;'>**Mode 1**</span>",
+caption = "Billboard Top 100 data from #Tidytuesday", x = "Energy", y = "Speechiness") +
+  geom_segment(aes(x = 0.15, y = 0.02, xend = 1, yend = 0.02), linewidth = 1, color = "darkseagreen3") +
+  geom_segment(aes(x = 0.15, y = 0.02, xend = 0.5, yend = 0.5), linewidth = 1, color = "darkseagreen3") +
+  #geom_hline(yintercept = 0.1, color = "orange", alpha = 0.3, size = 1.5) +
+  my_theme() +
+  theme(legend.position = "top",
+    plot.title = element_markdown(),
+    panel.background = element_blank(),
+    panel.grid.major = element_line(color = "grey90", size = 0.2),
+    axis.ticks = element_line(color = "grey90", size = 0.2),
+    legend.key = element_blank())
+
+ggMarginal(p, type = "density", fill = "darkseagreen3", alpha = 0.5)
+# library(RColorBrewer)
+# palette <- brewer.pal(2, "Set1")
+
+# 打印颜色代码
+# print(palette)
+
+ggsave(
+  filename = "关注点4.png", 
+  width = 8,             # 宽
+  #height = 8,            # 高
+  units = "in",          # 单位
+  dpi = 300              # 分辨率DPI
+)
+```
+
+**评论:** 
+
+1. 数据分布初判断: 由于数据在$\rm Speechiness$自身的分布上就集中在$0.0 \sim 0.1$之间, 所以大多数的样本点呈现出了常数值相关性, 但这里我们并不认为这是一个有效的线性相关性(图中以<font color="yellow">黄色</font><br />矩形框框出);
+
+2. 线性相关性终判断: 图中以<font color="darkgreen">绿色</font><br />添加了两条辅助线作为"喇叭", 除开集聚的散点区域外, 整体数据分布以喇叭状扩散, 没有十足的线性相关性把握. 所以, 保留当前建模策略与结论.
+
+## 关注点五: 探究定性因子对于歌曲热度的分布影响(以$\rm Spotify \, Track \, Explicit$为例)
+
+$\quad$ 本节中, 我们将围绕定性变量$\rm Spotify \, Track \, Explicit$对于歌曲热度进行讨论. 通过查阅资料, 我们在音乐界中得到了一种说法, 即是否包含$\rm Explicit Lyrics$(显眼歌词/露骨歌词). 那么, 这些歌词是否通过一些"擦边"行为, 提升自身热度而成功的呢? 这是本节中需要核心探讨的话题.
+
+```{r, fig.width = 10}
+## 定义中位数标签
+n_fun <- function(x){
+  return(data.frame(
+    y = median(x, na.rm = TRUE),
+    label = paste0("Median = ", round(median(x, na.rm = TRUE), 1))
+  ))
+}
+
+data_a %>%
+  filter(!is.na(spotify_track_explicit)) %>%
+  add_count(spotify_track_explicit) %>%
+  mutate(exp_axis = paste0("Explicit(", spotify_track_explicit, "):", n, " Samples")) %>%
+  ggplot(aes(y = reorder(exp_axis, n), x = spotify_track_popularity)) +
+  geom_violin(draw_quantiles = 0.5, fill = "#CC0000", linewidth = 0.5, alpha = 0.5) +
+  stat_summary(geom = "text", fun.data = n_fun, size = 5, hjust = 0.5, vjust = 2.6) +
+  geom_boxplot(width = 0.2, color = "grey", alpha = 0.5,
+outlier.colour = "#377EB8") +
+  labs(title = "Distribution of Popularity by Spotify Track Explicit", x = "Popularity", y = "", caption = "Billboard Top 100 data from #Tidytuesday") +
+  my_theme()
+
+ggsave(
+  filename = "关注点5.png", 
+  width = 10,             # 宽
+  #height = 8,            # 高
+  units = "in",          # 单位
+  dpi = 300              # 分辨率DPI
+)
+```
+
+**评论:**
+
+1. (不含$\rm Explicit$) 总体分布均匀, 高热度数据分布有"缩水"情况;
+
+2. (含$\rm Explicit$) 总体分布呈纺锤形, 即中间密集, 两端稀疏, 数据分布集中在中位数$63$附近;
+
+3. (综合结论) 从总体分布上看来, 含有$\rm Explicit Lyrics$会明显地加大歌曲的受欢迎程度. 单从中位数的角度, 含$\rm Explicit$的中位热度$63$明显胜于不含$\rm Explicit$的中位热度$39$. 所以, 从词曲创作的角度而言, 创作时应适当添加达到更好的听感, 但应张弛有度, 遵守基本道德底线与公序良俗.
+
+
+## 关注点六: 主流音乐风格的分布比例
+
+$\quad$ 在本节中, 我们在以上各项因子分析的基础之上, 还需要对于我们想要创作的音乐风格, 音乐类型进行进一步的探讨. 当然, 借鉴成功案例的数据经验, 是我们一个很好的选择参考.
+```{r, fig.width=8}
+my_theme_par <- function(){
+  theme_linedraw(base_size = 12) +
+    theme(
+      plot.background = element_rect(fill = NA, color = NA),
+      plot.title = element_text(size = 18, hjust = 0.5, vjust = 0.5, color = "black", face = "bold", margin = margin(b = 0.2, unit = "cm")),
+      plot.subtitle = element_text(size = 12, hjust = 0, vjust = 0.5, margin = margin(b = 0.2, unit = "cm")),
+      plot.caption = element_text(size = 10, hjust = 1, face = "italic", margin = margin(t = 0.1, unit = "cm"), colour = "#CC0000"),
+      axis.ticks = element_blank(),
+      axis.text.x = element_blank(),  
+      axis.text.y = element_blank(),
+      legend.background = element_rect(fill = NA, color = NA),
+      legend.key = element_rect(fill = NA, color = NA),
+      legend.title = element_text(size = 12, hjust = 0.5, face = "bold"),
+      panel.grid.major.x = element_line(colour = "grey45", linetype = "dashed", size = 0.2),
+      panel.grid.major.y = element_line(colour = "grey45", linetype = "dashed", size = 0.2),
+      panel.background = element_rect(fill = "white"),
+      panel.grid.major = element_line(color = "grey90", size = 0.3),
+      panel.grid.minor = element_blank(),
+      strip.background = element_rect(fill = "#CC0000"),
+      strip.text.x = element_text(size = 10, color = "black", face = "bold")
+    )
+}
+
+
+```
+
+
+```{r, fig.width=8}
+library(RColorBrewer)
+library(stringi)
+library(tidyverse)
+
+pop_count <- data_a %>%
+  filter(stri_detect_regex(spotify_genre, "pop")) %>%
+  summarise(count = n())
+
+folk_count <- data_a %>%
+  filter(stri_detect_regex(spotify_genre, "folk")) %>%
+  summarise(count = n())
+
+jazz_count <- data_a %>%
+  filter(stri_detect_regex(spotify_genre, "jazz")) %>%
+  summarise(count = n())
+
+rock_count <- data_a %>%
+  filter(stri_detect_regex(spotify_genre, "rock")) %>%
+  summarise(count = n())
+
+class_count <- data_a %>%
+  filter(stri_detect_regex(spotify_genre, "class")) %>%
+  summarise(count = n())
+
+pop_count <- as.data.frame(pop_count)
+folk_count <- as.data.frame(folk_count)
+jazz_count <- as.data.frame(jazz_count)
+rock_count <- as.data.frame(rock_count)
+class_count <- as.data.frame(class_count)
+
+class_count$Genre <- "Type C: Classic"
+pop_count$Genre <- "Type E: Pop"
+folk_count$Genre <- "Type B: Folk"
+jazz_count$Genre <- "Type A: Jazz"
+rock_count$Genre <- "Type D: Rock"
+
+all_genres <- rbind(class_count, pop_count, folk_count, jazz_count, rock_count)
+```
+
+
+```{r, fig.width=8}
+# 绘制饼状图
+all_genres %>%
+  mutate(percent = count/sum(count)) %>%
+  mutate(label = scales::percent(percent)) %>%
+  ggplot(aes(x = "", y = reorder(percent, percent), fill = Genre)) +
+  geom_bar(stat = "identity") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(x = 1.2, label = label), size = 5, position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(
+                    values = brewer.pal(5,"Reds"),
+                    # breaks = c("Class", "Folk", "Jazz", "Pop", "Rock"),
+                    # labels = c("Jazz", "Folk", "Class", "Rock", "Pop"),
+                    # values = c("#FB6A4A","#FCAE91", "#FEE5D9", "#A50F15", "#DE2D26"),
+                    name = "Genres") +
+  labs(x = "", y = "", title = "Proportional Distribution Map of \nMainstream Music Genres",
+       caption = "Billboard Top 100 data from #Tidytuesday") +
+  my_theme_par()
+
+#legend("right", legend = c("Jazz", "Folk", "Class", "Rock", "Pop"), col = brewer.pal(5, "Reds"), pch = 1)
+
+ggsave(
+  filename = "关注点6.png", 
+  width = 8,             # 宽
+  #height = 8,            # 高
+  units = "in",          # 单位
+  dpi = 300              # 分辨率DPI
+)
+```
+
+**评论:**
+
+1. 基于主流音乐风格经验, 我们分离出了如上的几种音乐风格. 在饼状比例图中, 不难看出主流顺序从大到小依次为: $\rm Pop, Rock, Classic, Folk, Jazz$;
+
+2. 上述现象的成因, 可以尝试归结为: 人们喜欢热情奔放而写实的音乐, 释放自己的个人情绪, 为平常的平淡日子增加一抹音乐色彩. 追求快乐与热情, 照进现实, 应当是音乐的娱乐内核!
+
+## 结论
+
+$\quad$ 本次可视化项目中, 音乐受欢迎的普遍特征认为是: 热情奔放, 用歌词照进现实, 流露真情实感.
+
+  (1) 从近似连续型因子的角度而言可以是: 更高度的$\rm Energy, Speechiness$(力量与语言性);
+  
+  (2) 从定性因子的角度而言可以是: 具备$\rm Explicit$(词曲显眼性);
+  
+  (3) 从音乐风格的角度而言可以是: 选用$\rm Pop, Rock$(流行与摇滚音乐).
+  
+  $\qquad\bf\text{音乐需要热情, 生活也是, 我们更是!}$
+
+## 展望
+
+**其他有趣的可视化主题建议:**
+
+$\quad$ 本次可视化项目的内容有限, 仅仅只能为读者们呈现部分想要分享的内容作为参考. 当然, 肯定不应局限于此, 更多精彩的内容仍然值得我们商讨. 以下, 是一些值得我们后续关注的一些主题:
+
+1. 排行榜趋势图：可以绘制一张时间序列图，展示特定歌曲在一段时间内的排名变化。
+
+2. 最受欢迎艺术家热力图：使用柱状图或热力图显示不同艺术家在排行榜上的整体表现，横轴为时间，纵轴为艺术家。
+
+3. 音频特征分布：创建一张箱形图，展示不同歌曲在音频特征上的分布，比如“能量”、“节奏”等。
+
+4. 排行榜与音频特征的关系：可以进行一些散点图绘制，比如将“排行榜位置”与“Spotify人气指数”或“音频能量水平”进行散点关联。
+
+5. 排行榜变迁：制作一个动态的条形图动画，展示一段时间内每周的排行榜前几名。
+
+6. 音乐风格分布：利用条形图或饼图展示不同音乐风格（如从spotify_genre字段获取）在排行榜上的分布。
+
+7. 歌曲长度与排名的关系：探究歌曲长度是否与它们在排行榜上的表现有关系，可以使用散点图结合回归线。
+
+8. 排行榜上的性别平等：分析排行榜上男女艺术家的比例，并制作一个柱状图来展示这种平衡性。
+
+9. 音频特征与排行榜位置的关联：利用Spearman秩相关系数或Pearson相关系数来衡量音频特征与排行榜位置之间的相关性。
+
+10. 时间签名与音乐风格的关系：分析不同音乐风格中时间签名的分布，并使用条形图或堆叠条形图来表示。
+
+## 致谢
+
+$\quad$ 在此, 感谢上海交通大学的悉心培养! 特别感谢$\bf\text{《数据可视化》任好洁老师}$本学期的认真, 细致和严谨的教导, 本次中期项目也得以顺利完成! 希望上海交通大学在各位优秀学者的工作努力之下, 能够收获更多卓越超群的教育成果.
+
+$\quad$ 同时, 也感谢广大教育工作者对于材料的认真编写与审读, 为新一代学习者提供了丰富详实的学习资料!
+
+
+$$
+\text{邵 毅 诚}\\        
+\\
+\text{2024 年 04 月 于 上海市}
+$$
